@@ -11,7 +11,7 @@ class AuthorBase(BaseModel):
     class Config:
         fields = {
             'email': {
-                'example': 'sas@sos.ru'
+                'example': 'e.mail@what.com'
             }
         }
 
@@ -27,12 +27,12 @@ class AuthorUpdate(BaseModel):
     class Config:
         fields = {
             'books': {
-                'title': 'sas',
+                'title': 'books',
                 'example': None
             },
             'email': {
-                'title': 'emaaaaaail',
-                'example': 'sas@jij.ru'
+                'title': 'email',
+                'example': 'e.mail@what.com'
             },
         }
 

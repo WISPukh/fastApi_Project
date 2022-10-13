@@ -3,8 +3,8 @@ from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from books import crud
 from books import schemas
+from books.crud import BookService
 from main_app.database import get_db
 
 router = APIRouter(
@@ -14,26 +14,30 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=List[schemas.Book])
-def get_books(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return crud.get_books(db, skip=skip, limit=limit)
+@router.get('/', response_model=List[schemas.Book])
+async def get_books(offset: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return get_service(db).get_books(offset, limit=limit)
 
 
 @router.post('/', response_model=schemas.Book)
-def create_book(book: schemas.BookCreate, db: Session = Depends(get_db)):
-    return crud.create_book(db, book)
+async def create_book(book: schemas.BookCreate, db: Session = Depends(get_db)):
+    return get_service(db).create_book(book)
 
 
 @router.get('/{book_id}', response_model=schemas.Book)
-def get_book(book_id: int, db: Session = Depends(get_db)):
-    return crud.get_book(db, book_id)
+async def get_book(book_id: int, db: Session = Depends(get_db)):
+    return get_service(db).get_book(book_id)
 
 
 @router.delete('/{book_id}')
-def delete_book(book_id: int, db: Session = Depends(get_db)):
-    crud.delete_book(db, book_id)
+async def delete_book(book_id: int, db: Session = Depends(get_db)):
+    get_service(db).delete_book(book_id)
 
 
 @router.patch('/{book_id}', response_model=schemas.Book)
-def update_book(book_id: int, book: schemas.BookUpdate, db: Session = Depends(get_db)):
-    return crud.update_book(db, book_id, book)
+async def update_book(book_id: int, book: schemas.BookUpdate, db: Session = Depends(get_db)):
+    return get_service(db).update_book(book_id, book)
+
+
+def get_service(db: Session):
+    return BookService(db)
