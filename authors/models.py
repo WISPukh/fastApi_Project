@@ -12,4 +12,4 @@ class Author(Base):
     password = Column(String)
     is_active = Column(Boolean, default=True)
 
-    books = relationship('Book', back_populates='author')
+    books = relationship('Book', back_populates='author', lazy='subquery')

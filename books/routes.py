@@ -1,11 +1,9 @@
-from typing import List
-
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from books import schemas
-from books.crud import BookService
-from main_app.database import get_db
+from main_app.database import get_session
+from .crud import BookService
+from .schemas import Book, BookUpdate, BookCreate
 
 router = APIRouter(
     prefix='/books',
@@ -14,30 +12,48 @@ router = APIRouter(
 )
 
 
-@router.get('/', response_model=List[schemas.Book])
-async def get_books(offset: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return get_service(db).get_books(offset, limit=limit)
+@router.get('/',
+            name='Получить список кинг',
+            response_model=list[Book],
+            status_code=200)
+async def get_books(offset: int = 0,
+                    limit: int = 100,
+                    session: AsyncSession = Depends(get_session)) -> list[Book]:
+    return await BookService(session).get_books(offset, limit=limit)
 
 
-@router.post('/', response_model=schemas.Book)
-async def create_book(book: schemas.BookCreate, db: Session = Depends(get_db)):
-    return get_service(db).create_book(book)
+@router.post('/',
+             name='Добавить книгу',
+             response_model=Book,
+             status_code=201)
+async def create_book(book: BookCreate,
+                      session: AsyncSession = Depends(get_session)) -> Book:
+    return await BookService(session).create_book(book)
 
 
-@router.get('/{book_id}', response_model=schemas.Book)
-async def get_book(book_id: int, db: Session = Depends(get_db)):
-    return get_service(db).get_book(book_id)
+@router.get('/{book_id}',
+            name='Получить книгу',
+            response_model=Book,
+            status_code=200)
+async def get_book(book_id: int,
+                   session: AsyncSession = Depends(get_session)) -> Book:
+    return await BookService(session).get_book(book_id)
 
 
-@router.delete('/{book_id}')
-async def delete_book(book_id: int, db: Session = Depends(get_db)):
-    get_service(db).delete_book(book_id)
+@router.delete('/{book_id}',
+               name='Удалить книгу',
+               response_model=Book,
+               status_code=200)
+async def delete_book(book_id: int,
+                      session: AsyncSession = Depends(get_session)) -> Book:
+    return await BookService(session).delete_book(book_id)
 
 
-@router.patch('/{book_id}', response_model=schemas.Book)
-async def update_book(book_id: int, book: schemas.BookUpdate, db: Session = Depends(get_db)):
-    return get_service(db).update_book(book_id, book)
-
-
-def get_service(db: Session):
-    return BookService(db)
+@router.patch('/{book_id}',
+              name='Обновить книгу',
+              response_model=Book,
+              status_code=200)
+async def update_book(book_id: int,
+                      book: BookUpdate,
+                      session: AsyncSession = Depends(get_session)) -> Book:
+    return await BookService(session).update_book(book_id, book)

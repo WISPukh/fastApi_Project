@@ -1,41 +1,70 @@
-from sqlalchemy.orm import Session
+from fastapi import HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import Book as ModelBook
+from authors.models import Author as ModelAuthor
+from .models import Book
 from .schemas import BookUpdate, BookCreate
 
 
 class BookService:
-    def __init__(self, db: Session):
-        self.db = db
+    Model = Book
 
-    def get_books(self, offset: int = 0, limit: int = 100):
-        return self.db.query(ModelBook).offset(offset).limit(limit).all()
+    def __init__(self, session: AsyncSession) -> None:
+        self.db = session
 
-    def get_book(self, book_id: int):
-        return self.db.query(ModelBook).filter(ModelBook.id == book_id).first()
+    async def get_book(self, book_id: int) -> Model:
+        return await self.get_instance(book_id)
 
-    def create_book_for_author(self, book: BookCreate, author_id: int):
-        db_book = ModelBook(**book.dict(), author_id=author_id)
-        self.db.add(db_book)
-        self.db.commit()
-        self.db.refresh(db_book)
-        return db_book
+    async def get_books(
+            self, offset: int = 0, limit: int = 100
+    ) -> list[Model]:
+        return (await self.db.execute(
+            select(self.Model).offset(offset).limit(limit)
+        )).scalars().all()
 
-    def delete_book(self, book_id: int):
-        db_book = self.db.query(ModelBook).filter(ModelBook.id == book_id).first()
-        self.db.delete(db_book)
-        self.db.commit()
+    async def delete_book(self, book_id: int) -> Model:
+        book = await self.get_instance(book_id)
+        await self.db.delete(book)
+        await self.db.commit()
 
-    def update_book(self, book_id: int, book: BookUpdate):
-        db_book = self.db.query(ModelBook).filter(ModelBook.id == book_id).first()
-        for key, value in book.dict(exclude_unset=True).items():
-            setattr(db_book, key, value)
-        self.db.commit()
-        return db_book
+        return book
 
-    def create_book(self, book: BookCreate):
-        db_book = ModelBook(**book.dict())
-        self.db.add(db_book)
-        self.db.commit()
-        self.db.refresh(db_book)
-        return db_book
+    async def create_book_for_author(
+            self, data: BookCreate, author_id: int
+    ) -> Model:
+        book = self.Model(**data.dict(), author_id=author_id)
+        author = (await self.db.execute(
+            select(ModelAuthor).where(ModelAuthor.id == author_id)
+        )).scalars().first()
+        if author is None:
+            raise HTTPException(status_code=404, detail='No author exists with given id')
+        self.db.add(book)
+        await self.db.commit()
+
+        return book
+
+    async def update_book(
+            self, book_id: int, data: BookUpdate
+    ) -> Model:
+        book = await self.get_instance(book_id)
+        for key, value in data.dict(exclude_unset=True).items():
+            setattr(book, key, value)
+        await self.db.commit()
+
+        return book
+
+    async def create_book(self, data: BookCreate) -> Model:
+        book = self.Model(**data.dict())
+        self.db.add(book)
+        await self.db.commit()
+
+        return book
+
+    async def get_instance(self, book_id: int) -> Model:
+        instance = (await self.db.execute(
+            select(self.Model).where(self.Model.id == book_id)
+        )).scalars().first()
+        if instance is None:
+            raise HTTPException(status_code=404, detail='No item found')
+        return instance

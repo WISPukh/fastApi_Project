@@ -21,11 +21,11 @@ class Book(BookBase):
         orm_mode = True
 
 
-class BookChangeAuthor(BaseModel):
-    id: int
-
-
 class BookUpdate(BookBase):
     title: Optional[str]
     price: Optional[PositiveInt]
     description: Optional[str]
+
+
+class ListBook(BaseModel):
+    items: list[Book]
