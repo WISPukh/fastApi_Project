@@ -1,48 +1,64 @@
-from sqlalchemy.orm import Session
+from fastapi import HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from books.models import Book as ModelBook
-from . import schemas
-from .models import Author as ModelAuthor
+from .models import Author
+from .schemas import AuthorCreate, AuthorUpdate
 
 
 class AuthorService:
-    def __init__(self, db: Session):
+    Model = Author
+
+    def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    def get_author(self, author_id: int):
-        return self.db.query(ModelAuthor).filter(ModelAuthor.id == author_id).first()
+    async def get_author(self, author_id: int) -> Model:
+        return await self.get_instance(author_id)
 
-    def get_authors(self, offset: int = 0, limit: int = 100):
-        return self.db.query(ModelAuthor).offset(offset).limit(limit).all()
+    async def get_authors(
+            self, offset: int = 0, limit: int = 100
+    ) -> list[Model]:
+        return (await self.db.execute(
+            select(self.Model).offset(offset).limit(limit)
+        )).scalars().all()
 
-    def create_author(self, author: schemas.AuthorCreate):
-        fake_hashed_password = author.password + '#####fakehash#####'
-        db_author = ModelAuthor(email=author.email, password=fake_hashed_password)
-        self.db.add(db_author)
-        self.db.commit()
-        self.db.refresh(db_author)
-        return db_author
+    async def create_author(self, data: AuthorCreate) -> Model:
+        data.password += '#####fakehash#####'
+        author = self.Model(**data.dict())
+        self.db.add(author)
+        await self.db.commit()
 
-    def delete_author(self, author_id: int):
-        db_author = self.db.query(ModelAuthor).filter(ModelAuthor.id == author_id).first()
-        self.db.delete(db_author)
-        self.db.commit()
+        return author
 
-    def update_author(self, author_id: int, update_data: schemas.AuthorUpdate):
-        db_author = self.db.query(ModelAuthor).filter(ModelAuthor.id == author_id).first()
+    async def delete_author(self, author_id: int) -> Model:
+        author = await self.get_instance(author_id)
+        await self.db.delete(author)
+        await self.db.commit()
+
+        return author
+
+    async def update_author(
+            self, author_id: int, update_data: AuthorUpdate
+    ) -> Model:
+        author = await self.get_instance(author_id)
         books = update_data.dict().get('books')
         for key, value in update_data.dict(exclude_unset=True).items():
             if not isinstance(value, list):
-                setattr(db_author, key, value)
+                setattr(author, key, value)
             else:
-                all_author_books = self.db.query(ModelBook).filter(ModelBook.author_id == author_id).all()
-                for book in all_author_books:
-                    book.author_id = None
+                new_books = (await self.db.execute(
+                    select(ModelBook).where(ModelBook.id.in_(books))
+                )).scalars().all()
+                author.books = new_books
+        await self.db.commit()
 
-                needed_books_pks = [book['id'] for book in books]
-                books_to_assign = self.db.query(ModelBook).filter(ModelBook.id.in_(needed_books_pks)).all()
-                for book in books_to_assign:
-                    book.author_id = author_id
-        self.db.commit()
-        self.db.refresh(db_author)
-        return db_author
+        return author
+
+    async def get_instance(self, author_id: int) -> Model:
+        instance = (await self.db.execute(
+            select(self.Model).where(self.Model.id == author_id)
+        )).scalars().first()
+        if instance is None:
+            raise HTTPException(status_code=404, detail='No item found')
+        return instance

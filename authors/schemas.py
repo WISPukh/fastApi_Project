@@ -1,8 +1,8 @@
-from typing import Optional, List
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from books.schemas import Book, BookChangeAuthor
+from books.schemas import Book
 
 
 class AuthorBase(BaseModel):
@@ -21,7 +21,7 @@ class AuthorCreate(AuthorBase):
 
 
 class AuthorUpdate(BaseModel):
-    books: Optional[List[BookChangeAuthor]]
+    books: Optional[list[int]]
     email: Optional[str] = Field(regex=r'\S+\w+@\w+\S+')
 
     class Config:
@@ -40,7 +40,7 @@ class AuthorUpdate(BaseModel):
 class Author(AuthorBase):
     id: int
     is_active: bool = True
-    books: List[Book] = []
+    books: list[Book] = []
 
     class Config:
         orm_mode = True
