@@ -1,17 +1,14 @@
 from fastapi import HTTPException
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
+from authors.models import Author
+from authors.schemas import AuthorCreate, AuthorUpdate
 from books.models import Book as ModelBook
-from .models import Author
-from .schemas import AuthorCreate, AuthorUpdate
+from main_app.abstract import AbstractService
 
 
-class AuthorService:
+class AuthorService(AbstractService):
     Model = Author
-
-    def __init__(self, db: AsyncSession) -> None:
-        self.db = db
 
     async def get_author(self, author_id: int) -> Model:
         return await self.get_instance(author_id)
