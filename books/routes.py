@@ -1,9 +1,7 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter
 
-from main_app.database import get_session
-from .crud import BookService
-from .schemas import Book, BookUpdate, BookCreate
+from books.schemas import Book, BookUpdate, BookCreate
+from main_app.dependencies import BookServiceDependency
 
 router = APIRouter(
     prefix='/books',
@@ -12,48 +10,59 @@ router = APIRouter(
 )
 
 
-@router.get('/',
-            name='Получить список кинг',
-            response_model=list[Book],
-            status_code=200)
-async def get_books(offset: int = 0,
-                    limit: int = 100,
-                    session: AsyncSession = Depends(get_session)) -> list[Book]:
-    return await BookService(session).get_books(offset, limit=limit)
+@router.get(
+    '/',
+    name='Получить список кинг',
+    response_model=list[Book],
+    status_code=200
+)
+async def get_books(
+    offset: int = 0,
+    limit: int = 100,
+    book_service=BookServiceDependency,
+) -> list[Book]:
+    return await book_service.get_books(offset, limit=limit)
 
 
-@router.post('/',
-             name='Добавить книгу',
-             response_model=Book,
-             status_code=201)
-async def create_book(book: BookCreate,
-                      session: AsyncSession = Depends(get_session)) -> Book:
-    return await BookService(session).create_book(book)
+@router.post(
+    '/',
+    name='Добавить книгу',
+    response_model=Book,
+    status_code=201
+)
+async def create_book(book: BookCreate, book_service=BookServiceDependency) -> Book:
+    return await book_service.create_book(book)
 
 
-@router.get('/{book_id}',
-            name='Получить книгу',
-            response_model=Book,
-            status_code=200)
-async def get_book(book_id: int,
-                   session: AsyncSession = Depends(get_session)) -> Book:
-    return await BookService(session).get_book(book_id)
+@router.get(
+    '/{book_id}',
+    name='Получить книгу',
+    response_model=Book,
+    status_code=200
+)
+async def get_book(book_id: int, book_service=BookServiceDependency) -> Book:
+    return await book_service.get_book(book_id)
 
 
-@router.delete('/{book_id}',
-               name='Удалить книгу',
-               response_model=Book,
-               status_code=200)
-async def delete_book(book_id: int,
-                      session: AsyncSession = Depends(get_session)) -> Book:
-    return await BookService(session).delete_book(book_id)
+@router.delete(
+    '/{book_id}',
+    name='Удалить книгу',
+    response_model=Book,
+    status_code=200
+)
+async def delete_book(book_id: int, book_service=BookServiceDependency) -> Book:
+    return await book_service.delete_book(book_id)
 
 
-@router.patch('/{book_id}',
-              name='Обновить книгу',
-              response_model=Book,
-              status_code=200)
-async def update_book(book_id: int,
-                      book: BookUpdate,
-                      session: AsyncSession = Depends(get_session)) -> Book:
-    return await BookService(session).update_book(book_id, book)
+@router.patch(
+    '/{book_id}',
+    name='Обновить книгу',
+    response_model=Book,
+    status_code=200
+)
+async def update_book(
+    book_id: int,
+    book: BookUpdate,
+    book_service=BookServiceDependency,
+) -> Book:
+    return await book_service.update_book(book_id, book)
