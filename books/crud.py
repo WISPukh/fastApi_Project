@@ -65,3 +65,4 @@ class BookService(AbstractService):
         if instance is None:
             raise HTTPException(status_code=404, detail='No item found')
         return instance
+
