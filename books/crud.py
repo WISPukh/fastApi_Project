@@ -59,12 +59,12 @@ class BookService(AbstractService):
         return book
 
     async def get_instance(self, book_id: int) -> Model:
-        instance = (await self.db.execute(
-            select(self.Model).where(self.Model.id == book_id)
-        )).scalars().first()
+        instance = await __get(book_id)
         if instance is None:
             raise HTTPException(status_code=404, detail='No item found')
         return instance
 
-
-
+    async def __get(self, id):
+        return (await self.db.execute(
+            select(self.Model).where(self.Model.id == id)
+        )).scalars().first()
